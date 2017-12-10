@@ -1,0 +1,375 @@
+\documentclass[11pt, oneside, final]{article} \sloppy 
+\usepackage[utf8]{inputenc} 
+\usepackage{a4wide} 
+\usepackage[russian]{babel} 
+\usepackage{graphicx} 
+\usepackage{epstopdf} 
+\usepackage{amsmath} 
+\usepackage{amsfonts} 
+\usepackage{amssymb} 
+\usepackage{amsthm}
+
+\numberwithin{equation}{section} 
+\newtheorem{definition}{Определение}[section] 
+\newtheorem{theorem}{Теорема}[section] 
+\newtheorem{property}{Свойство}[section] 
+\newtheorem{corollary}{Следствие}[theorem] 
+\newtheorem{lemma}[theorem]{Лемма} 
+\newtheorem*{statement}{Утверждение} 
+\renewenvironment{proof}{
+\noindent\textit{Доказательство: }} {\qed}
+
+%commands
+\newcommand \bitem[1][]{
+\item \textbf{#1}} 
+\newcommand \four[1][\lambda]{\mathfrak{F}(#1)} 
+\newcommand \fft[1][\lambda]{F(#1)} 
+\newcommand {\intinf}[2] {\int \limits_{- \infty}^{+ \infty}{#1 \, d#2}}
+\renewcommand \qed{$\blacksquare$}
+
+\DeclareMathOperator{\sgn}{sgn}
+
+\begin{document}
+
+%Title
+\thispagestyle{empty}
+\begin{center}
+    \ \vspace{-3cm}
+    
+    \includegraphics[width=0.5
+    \textwidth]{msu}\\
+    {\scshape Московский государственный университет имени М.~В.~Ломоносова}\\
+    Факультет вычислительной математики и кибернетики\\
+    Кафедра системного анализа
+    
+    \vfill
+    
+    {\LARGE Отчёт по практикуму}
+    
+    \vspace{1cm}
+    
+    {\Huge\bfseries "<Быстрое преобразование Фурье">} 
+\end{center}
+
+\vspace{1cm}
+\begin{flushright}
+    \large \textit{Студент 315 группы}\\
+    В.\,В.~Кожемяк
+    
+    \vspace{5mm}
+    
+    \textit{Руководители практикума}\\
+    к.ф.-м.н., доцент И.\,В.~Рублёв \\
+    к.ф.-м.н., доцент П.\,А.~Точилин 
+\end{flushright}
+
+\vfill
+\begin{center}
+    Москва, 2017 
+\end{center}
+\pagebreak
+
+%Contents
+\tableofcontents
+
+\pagebreak
+
+%Task
+
+
+\section{Постановка~задачи}
+
+\subsection{Общая~формулировка~задачи} Дана система функций (всюду далее, если не сказано противное, предполагается, что $ f(t) : \mathbb{R} \rightarrow \mathbb{R} $ и функция суммируема и обладает достаточной гладкостью) 
+\begin{equation}\label{functions} 
+    \left\{ 
+    \begin{aligned}
+        f_1(t) &= \dfrac{1 - \cos^2{t}}{t} \\
+        f_2(t) &= te^{-2t^2} \\
+        f_3(t) &= \dfrac{2}{1 + 3t^6} \\
+        f_4(t) &= e^{-5|t|}\ln({3 + t^4})
+    \end{aligned}
+    \right. 
+\end{equation}
+Для каждой функции из системы \eqref{functions} требуется:
+\begin{enumerate}
+    \item Получить аппроксимацию преобразования Фурье $ F(\lambda) $ при помощи быстрого преобразования Фурье ({\bfseries БПФ / FFT}), выбирая различные шаги дискретизации исходной функции и различные окна, ограничивающие область определения $ f(t) $.
+    \item Построить графики $ F(\lambda). $
+    \item Для функций $ f_1(t) $ и $ f_2(t) $ из заданного набора вычислить аналитически преобразование Фурье 
+    \begin{equation}\label{fourier_transform} 
+        F(\lambda) = \intinf {f(t) e^{-i\lambda t}} {t}
+    \end{equation}
+    и сравнить графики $ F(\lambda) $, полученные из аналитического представления и из аппроксимации через {\bfseries БПФ}.\\
+\end{enumerate}
+
+%Formal task
+
+\subsection{Формальная~постановка~задачи} 
+\begin{enumerate}
+    \item Реализовать на языке MATLAB функцию \\\texttt{plotFT(hFigure,~fHandle,~fFTHandle,~step,~inpLimVec,~outLimVec)} \\со следующими параметрами: 
+    \begin{itemize}
+        \bitem[hFigure] ~--- указатель на фигуру, в которой требуется отобразить графики \bitem[fHandle] ~--- указатель на функцию (\texttt{Function Handle}), которую требуется преобразовывать ($ f(t) $) \bitem[fFTHandle] ~--- указатель на функцию (\texttt{Function Handle}), моделирующую аналитическое преобразование Фурье \eqref{fourier_transform} функции $ f(t) $ (может быть пустым вектором, в таком случае график аналитического преобразования строить не требуется) \bitem[step] ~--- положительное число, задающее шаг дискретизации $\Delta t $ \bitem[inpLimVector] ~--- вектор-строка, задающая окно $ [a, b] $ для функции $ f(t) $, первый элемент вектора содержит $ a $, второй $ b $, причём~$ a < b $, но не обязательно $ a = -b $ \bitem[outLimVector] ~--- вектор-строка, задающая окно $ [c, d] $ \textit{для вывода} графика преобразования Фурье (пределы~осей~абсцисс). В случае, если передаётся пустой вектор, следует брать установленные в фигуре пределы или определять свои разумным образом 
+    \end{itemize}
+    Данная функция строит графики вещественной и мнимой частей численной аппроксимации преобразования Фурье (\ref{fourier_transform}) функции $ f(t) $, заданной в \textbf{\texttt{fHandle}} (и, при необходимости, соответствующие графики~аналитического~преобразования~Фурье~$ F(\lambda) $) \\
+    Кроме того, данная функция, должна возвращать структуру, содержащую следующие параметры: 
+    \begin{itemize}
+        \bitem[nPoints] ~--- число вычисляемых узлов сеточной функции, рассчитываемое по формуле:
+        $ nPoints = \Bigl\lfloor {\dfrac{(b - a)}{step}}\Bigr\rfloor $
+        \bitem[step] ~--- поправленное значение шага дискретизации $ \Delta t $, рассчитываемое по формуле:
+        $ step= \dfrac{(b - a)}{nPoints} $
+        \bitem[inpLimVec] ~--- окно $ [a, b] $ для функции \(f(t)\) \bitem[outLimVec] ~--- окно для вывода графика преобразования Фурье $ f(\lambda) $ 
+    \end{itemize}
+    \item Построить, используя написанную функцию \texttt{plotFT}, для каждой из функций системы \eqref{functions} графики $ \lambda $ для разных значений входных параметров (окон \textbf{inpLimVec, outLimVec} и частоты дискретизации \textbf{step}). \\В частности, для некоторых функций подобрать параметры так, чтобы проиллюстрировать эффекты \textit{наложения спектра, появления~ряби и их устранения} (в случае ряби~--- в точках непрерывности $ \lambda $) 
+    \item Для функций $ f_1(t) $ и $ f_2(t) $ из системы \eqref{functions} вычислить аналитически их преобразования Фурье $ F(\lambda) $ и построить их графики вместе с графиками численной аппроксимации $ F(\lambda) $ 
+\end{enumerate}
+
+%fourier
+
+
+\section{Вычисление~аналитических~преобразований~Фурье}
+
+\subsection{Некоторые~необходимые~обозначения~и~соотношения} Напомним, что преобразование Фурье $ F(\lambda) $ функции $ f(t) $ задаётся формулой \eqref{fourier_transform}: 
+\begin{align*}
+    F(\lambda) = \intinf {f(t) e^{-i\lambda t}} {dt} 
+\end{align*}
+Далее, для краткости будем писать:
+$$ f(t) \rightarrow F(\lambda) $$
+
+\noindent Для вычисления аналитического преобразования Фурье нам потребуется лемма Жордана и теорема о вычетах. 
+
+\begin{lemma}[лемма Жордана]
+	Если $ f(z) $ аналитична в верхней полуплоскости $ Im(z) > 0 $, за исключением конечного числа изолированных особых точек, и при $ |z| \rightarrow \infty $ стремится к нулю равномерно относительно $ \arg z $. Тогда для любого $ \alpha > 0 $  $$ \lim\limits_{R \rightarrow \infty}\int\limits_{C_R}{f(z) \cdot e^{i \alpha z} \, {dz} } = 0 $$, \\
+	где $ C_R $ верхняя полуокружность $ |z| = R, Im(z) > 0 $
+	
+\end{lemma}
+
+\begin{theorem}[Основная теорема о вычетах]
+	Пусть функция $ f(z) $ аналитична всюду в области $ D $ за исколючением конечного числа изолированных особых точек $ z_1, \cdots, z_n $. Тогда для любой замкнутой области $ \overline{G} $, лежащей в $ D $ и содержащей точки $ z_1, \cdots, z_n $ внутри, справедливо равенство
+	
+$$ \int\limits_{\partial G}{f(\zeta) \, d \zeta} = 2 \pi i \sum \limits_{k = 1}^{n} {res f(z_k)}$$
+\end{theorem}
+
+\noindent И еще необходим будет интеграл:
+\begin{equation} \label{Gaussian_Integral}
+	\int \limits_{0}^{+ \infty} {e^{-x^2} \, dx = \dfrac{\sqrt{\pi}} {2}}
+\end{equation}
+
+%Fourier 1
+
+\subsection{Вычисление~аналитического~преобразования~Фурье\\функции~\(f_1(t) = \frac{1 - \cos^2{t}}{t} \)}
+Для начала упростим выражение $$ f_1(t) = \dfrac{1 - \cos^2{t}}{t} = \dfrac{\sin^2{t}}{t} = \dfrac{1 - \cos{2t}}{2t}  $$
+Преобразование Фурье $ F_1 (\lambda) $ функции $ f_1(t) $ задаётся формулой:
+$$ F_1 (\lambda) = \intinf {\dfrac{1 - \cos{2t}}{2t} \cdot e^{-i\lambda t}} {dt} $$
+
+\noindent Вычислим этот этот интеграл. Для начала распишем $ e^{-i \lambda t} $ по определению:
+
+$$ e^{-i \lambda t} = {\cos{\lambda t}} - i{\sin{\lambda t}}. $$
+
+\noindent Далее это выражение подставляем в интеграл и пользуемся линейностью интеграла:
+
+$$  \intinf {\dfrac{1 - \cos{2t}}{2t} \cdot e^{-i\lambda t}} {dt} =  {\intinf {\dfrac{1 - \cos{2t}}{2t} \cdot \cos{\lambda t}} {dt}} - i{ \intinf {\dfrac{1 - \cos{2t}}{2t} \cdot \sin{\lambda t}} {dt}} = $$ 
+
+$$= {\intinf {\dfrac{1}{2t} \cdot \cos{\lambda t}} {dt}} - {\intinf {\dfrac{\cos{2t}}{2t} \cdot \cos{\lambda t}} {dt}} - {i{\intinf {\dfrac{1}{2t} \cdot \sin{\lambda t}} {dt}]}} + i{\intinf {\dfrac{\cos{2t}}{2t} \cdot \sin{\lambda t}} {dt}} = $$ 
+
+$$= \dfrac{1}{2}I_1 - \dfrac{1}{2}I_2 - \dfrac{i}{2}iI_3 + \dfrac{i}{2}iI_4 $$ \\
+
+Рассмотрим каждый из интегралов отдельно.\\
+
+\begin{enumerate}
+	\item Вычисление $ I_1 $:
+	
+	Из \textit{леммы Жордана} (см. выше) и \textit{основной теоремы вычетов} следует, что
+	\begin{equation}		
+		{\int \limits_{- \infty}^{+ \infty} {e^{i \alpha 	x} \cdot f(x) \, dx}} = {2 \pi i \sum \limits_{k = 1}^{n} {res  [e^{i \alpha z} f(z) | z = Im(z_k) > 0]}}
+	\end{equation}
+	Поэтому интеграл $ I_1 $ равен нулю.
+	
+	\item Вычисление $ I_2 $:
+	
+	Заметим, что $$ \cos{2t} \cdot \cos{\lambda t} = \dfrac{\cos{(2 + \lambda)t} + \cos{(2 - \lambda)t}}{2}.$$
+	Пользуясь линейностью интегралов и делая замену переменной, мы сведем эти интегралы к $ I_1. $
+	
+	\item Вычисление $ I_3 $:
+	
+	Следует рассматривать 3 случая:
+
+	\begin{enumerate}
+		\item $ \lambda > 0 $:	\\	
+	Разбивая на два интеграла и делая замену переменной, мы сведем $ I_3 $ к уже известному интегралу (\ref{Gaussian_Integral}).
+		\item $ \lambda < 0 $:	\\	
+	Т.к. функция $ \sin{x} $ --- нечетная, значит знак "минус" можно вынести. И далее опять разбивая на два интеграла и делая замену переменной, мы сведем $ I_3 $ к уже известному интегралу (\ref{Gaussian_Integral}).
+		\item $ \lambda = 0 $:	\\	
+	Очевидно, что $ I_3 = 0$.
+	\end{enumerate}
+	
+	\item Вычисление $ I_4 $:
+	
+	Заметим, что $$ \cos{2t} \cdot \sin{\lambda t} = \dfrac{\sin{(\lambda + 2)t} + \sin{(\lambda - 2)t}}{2}.$$
+	 Тогда получаем
+	
+	$$ \int \limits_{- \infty}^{+ \infty} {\dfrac{\cos{2t} \sin{\lambda t}}{t} \, dt} = {\int \limits_{0}^{+ \infty} {\dfrac{\sin{(\lambda + 2) t}}{t} \, dt}} + {\int \limits_{0}^{+ \infty} {\dfrac{\sin{(\lambda - 2) t}}{t} \, dt}} $$
+	
+	Следует рассматривать несколько случаев:
+
+	\begin{enumerate}
+		\item $ \lambda > 2 $:	\\	
+	Делая замену переменной, получим интегралы  типа (\ref{Gaussian_Integral}).
+		\item $ \lambda = 2 $:	\\	
+	Второй интеграл в правой части обнулится, а первый, путем заменый переменной, сведётся к (\ref{Gaussian_Integral}).
+		\item $ \lambda  \in (-2;2) $:	\\	
+	Очевидно, что $ I_4 = 0$.
+		\item $ \lambda  = -2 $:	\\	
+	Первый интеграл в правой части обнулится, а второй, путем заменый переменной, сведётся к (\ref{Gaussian_Integral}).
+		\item $ \lambda < -2 $:	\\	
+	Пользуясь тем, что функция $ \sin{x} $ --- нечетная, значит знак "минус" можно вынести и производя замену переменной, получим интегралы  типа (\ref{Gaussian_Integral}).
+			
+	\end{enumerate}
+	
+\end{enumerate}
+
+Итого, в результате получается, что
+
+\begin{equation} 
+	F(\lambda) =    
+    \left\{
+    \begin{aligned}
+    	\begin{array}{llc}
+        0, & \lambda \in \{- \infty; 2\} \cup \{0\} \cup \{2; + \infty\} \\
+        -\dfrac{\pi i}{2}, & \lambda \in (0; 2) \\
+        \dfrac{\pi i}{2}, & \lambda \in (-2; 0) \\
+        \dfrac{\pi i}{4}, & \lambda = -2 \\
+        -\dfrac{\pi i}{4}, & \lambda = 2\\
+		\end{array}   
+    \end{aligned}
+    \right. 
+\end{equation}
+
+
+\subsection{Вычисление~аналитического~преобразования~Фурье\\функции~\(f_2(t) = te^{-2t^2} \)} Преобразование Фурье $ F_2 (\lambda) $ функции $ f_2(t) = te^{-2t^2} $ задаётся формулой:
+$$ F_2 (\lambda) = \int \limits_{- \infty}^{+ \infty} {te^{-2t^2} e^{-i\lambda t} \, dt}. $$
+
+\noindent Выведем некоторую цепочку преобразований:
+
+$$ \int \limits_{- \infty}^{+ \infty} {te^{-2t^2} e^{-i\lambda t} \, dt} = \int \limits_{- \infty}^{+ \infty} {te^{-2t^2 - i\lambda t} \, dt} = \intinf {te^{- \left (2t^2 + i \lambda t + \dfrac{i^2 \lambda ^2}{8} \right ) + \dfrac{i^2 \lambda ^2}{8}}} = $$
+
+$$ = e^{- \dfrac{\lambda ^2}{8}} \intinf{te^{- \left (\sqrt{2}t + \dfrac{i \lambda}{2  \sqrt{2} }\right )^2}}{t} = \left \lbrace \sqrt{2}t + \dfrac{i \lambda}{2  \sqrt{2}} = s \right \rbrace = $$
+
+$$ = \dfrac{1}{\sqrt{2}} e^{- \dfrac{\lambda ^2}{8}} \intinf{\left (\dfrac{s}{\sqrt{2}} - {\dfrac{i \lambda}{4}} \right )e^{- s^2}}{s} = \dfrac{1}{4} e^{- \dfrac{\lambda ^2}{8}} \intinf{s e^{- s^2}}{s} - \dfrac{i \lambda}{4 \sqrt{2}} e^{- \dfrac{\lambda ^2}{8}} \intinf{e^{- s^2}}{s} = $$
+
+$$ = \dfrac{1}{4} e^{- \dfrac{\lambda ^2}{8}} \intinf{e^{- s^2}}{s^2} - \dfrac{i \lambda}{4 \sqrt{2}} e^{- \dfrac{\lambda ^2}{8}} \intinf{e^{- s^2}}{s}. $$
+
+Таким образом, первый интеграл обнуляется, а второй является известным интегралом (\ref{Gaussian_Integral}). Следовательно получаем:
+
+$$ F_2 (\lambda) = - \dfrac{i \sqrt{\pi}}{4 \sqrt{2}} \cdot \lambda \cdot e^{- \dfrac{\lambda ^2}{8}}. $$ \\
+
+\subsection{Примеры, иллюстрирующие работу программы}
+
+\begin{enumerate}
+	\item Рассматрим функцию: 
+	$$ f_1(t) = \dfrac{1 - \cos^2{t}}{t}. $$
+	Заметим, что она имее разрыв первого рода в точке $ t = 0 $. Исходя из её аналитического представления, мы знаем, что у него пять точек разрыва ($ \lambda = \pm \dfrac{\pi i}{2}, \pm \dfrac{\pi i}{4}, 0 $).  
+	
+	Выберем несколько значений параметров $ \bigtriangleup t $ (шаг дискретизации), $ [a, b] $ (окно, ограничивающее область действия функции $ f_1(t) $), $ [c, d] $(окно для вывода преобразования Фурье $ F_1(\lambda) $). 
+	
+	\begin{enumerate}
+		\item $ \bigtriangleup t = 0.9 $, $ [a, b] = [-30, 1000] $, $ [c, d] = [-2, 2] $.
+		
+		\includegraphics[width=1\linewidth]{21}
+		
+		\begin{corollary}
+			\begin{itemize}
+				\item Мнимая часть преобразования Фурье, полученные аналитически и численно, совпадают с точностью до ряби. Эта рябь неизбежно возникает в точках разрыва, но также она появляется и в точках непрерывности  функции $ F_1(\lambda) $. Первое связано со свойствами преобразования Фурье, а второе - с диапозоном окна.
+				\item Из аналитического представления $ F_1(\lambda) $ следует, что вещественная часть преобразования Фурье равна нулю, в то время, как вещественная часть, полученная численно, по модудлю отлична от нуля не больше чем на шаг дискретизации $ \bigtriangleup t $. Отметим, что точки разрыва в преобразовании Фурье, посчитанного численно, веществнной и мнимой частях совпадают.
+			\end{itemize}
+		\end{corollary}
+		
+		\item $ \bigtriangleup t = 0.9 $, $ [a, b] = [-300, 2500] $, $ [c, d] = [-2, 2] $.
+		
+		\includegraphics[width=1\linewidth]{22}
+		
+		\begin{corollary}
+			\begin{itemize}
+				\item Мнимые части преобразования Фурье, полученные численно и аналитически совпадают. Но в отличии от предыдущего примера, рябь возникает только в точках разрыва (совсем ее убрать нельзя!). Следоватьельно увеличивая диапозон окна, можно добиться исчезновения ряби в точках неперерывности функции $ F_1(\lambda) $.
+				\item Ситуация с действительной частью обстоит также, как и в предыдущем примере.
+			
+			\end{itemize}
+		\end{corollary}
+	\end{enumerate}
+
+	\item Теперь рассмотрим функцию:	
+		$$ f_2(t) = te^{-2t^2}. $$
+		
+		Как можно видеть, эта функция и её преобразование Фурье непрерывны.
+		Выберем несколько значений параметров $ \bigtriangleup t $ (шаг дискретизации), $ [a, b] $ (окно, ограничивающее область действия функции $ f_1(t) $), $ [c, d] $(окно для вывода преобразования Фурье $ F_2(\lambda) $).  
+		
+		\begin{enumerate}
+			\item $ \bigtriangleup t = 0.2 $, $ [a, b] = [-200, 500] $, $ [c, d] = [-2, 2] $.
+			
+			\includegraphics[width=1\linewidth]{12}
+			
+		\begin{corollary}
+			\begin{itemize}
+				\item Мнимые части преобразования Фурье, полученные численно и аналитически, совападают.
+				\item Вещественная часть преобразования Фурье, полученная аналитически равна нулю, в то время, как, полученная численно, по модулю не превосходит шага дискретизации $ \bigtriangleup t $.
+				\item Отсутсвует рябь. Т.к. нет точек разрыва.\\
+			\end{itemize}
+		\end{corollary}
+		
+			\item $ \bigtriangleup t = 1 $, $ [a, b] = [-60, 100] $, $ [c, d] = [-2, 2] $.
+			
+			\includegraphics[width=1\linewidth]{13}
+			
+			\begin{corollary}
+				\begin{itemize}
+					\item Вещественная часть преобразования Фурье по прежнему равна нулю, поэтому сдвиг ничего не изменит.
+					\item Что касается мнимой части, то здесь наблюдается эффект наложения спектра. При этом численное преобразование Фурье не совпадает с аналитическим. Данное явление обусловлено нарушением соотношения $$ \bigtriangleup t \leq \dfrac{\pi}{\Lambda}, $$ где $ \bigtriangleup t $ --- шаг дискретизации, а $ \Lambda > 0 \, (|\lambda| < \Lambda)$ --- промежуток, где нужно устранить наложение спектра.\\
+				В данном случае эффект наложения спектра можно устранить, т.к. функция $ F_1(\lambda) \rightarrow 0, $ при $ |\lambda| \rightarrow + \infty $. И чтобы его устранить нужно: увеличить окно $ \Rightarrow $ уменьшится шаг дискретизации $ \bigtriangleup t $ (см. пример выше);
+			
+				\end{itemize}
+				
+			\end{corollary}
+			
+		\end{enumerate}
+		
+		\item Далее рассмотрим функцию:	
+		$$ f_3(t) = \dfrac{2}{1 + 3t^6} $$
+		
+		Данная функция является непрерывной. Будем вычилсять преобразование Фурье численно. Выберем несколько значений параметров $ \bigtriangleup t $ (шаг дискретизации), $ [a, b] $ (окно, ограничивающее область действия функции $ f_1(t) $), $ [c, d] $(окно для вывода преобразования Фурье $ F_3(\lambda) $).
+		 
+		\begin{enumerate}
+			\item $ \bigtriangleup t = 0.1 $, $ [a, b] = [-40, 50] $, $ [c, d] = [-10, 10] $.
+		
+			\includegraphics[width=1\linewidth]{31}
+
+			\item $ \bigtriangleup t = 0.1 $, $ [a, b] = [-200, 200] $, $ [c, d] = [-20, 20] $.		
+		
+			\includegraphics[width=1\linewidth]{32}
+	
+		\end{enumerate}
+		
+		\begin{corollary}
+		Сравнинв графики мнимых и вещественных частей преобразования Фурье соответсвенно, мы делаем вывод, что ничего существенного не изменилось при подборе различных параметров. Но мы поняли по графику, что проеобразование Фурье непрерывное.
+		\end{corollary}
+		
+		\item Наконец рассмотрим функцию:	
+		$$ f_4(t) = e^{-5|t|}\ln({3 + t^4}) $$
+		
+		Эта функция - нерпрерывна. Будем вычилсять преобразование Фурье численно. Выберем несколько значений параметров $ \bigtriangleup t $ (шаг дискретизации), $ [a, b] $ (окно, ограничивающее область действия функции $ f_1(t) $), $ [c, d] $(окно для вывода преобразования Фурье $ F_4(\lambda) $).
+		 
+		\begin{enumerate}
+			\item $ \bigtriangleup t = 0.1 $, $ [a, b] = [-100, 100] $, $ [c, d] = [-20, 20] $.
+		
+			\includegraphics[width=1\linewidth]{41}
+
+			\item $ \bigtriangleup t = 0.1 $, $ [a, b] = [-20, 50] $, $ [c, d] = [-10, 10] $.		
+		
+			\includegraphics[width=1\linewidth]{42}
+	
+		\end{enumerate}
+		
+		\begin{corollary}
+		Сравнинв графики мнимых и вещественных частей преобразования Фурье соответсвенно, мы делаем вывод, что ничего существенного не изменилось при подборе различных параметров. И опять мы понимаем, что преобразование Фурье непрерывно.
+		\end{corollary}
+
+\end{enumerate}
+
+\end{document}
